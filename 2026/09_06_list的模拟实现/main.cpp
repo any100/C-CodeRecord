@@ -53,7 +53,7 @@ void test02()
 void print(const mylist::list<int>& lt)
 {
 	// const迭代器的要求不是本身不能修改，而是指向的内容不能修改
-	//const list<int>::iterator it = lt.begin();
+	// const list<int>::iterator it = lt.begin();
 	mylist::list<int>::const_iterator it = lt.begin();
 	while (it != lt.end())
 	{
@@ -64,7 +64,7 @@ void print(const mylist::list<int>& lt)
 	std::cout << std::endl;
 }
 
-void list_test04()
+void test03()
 {
 	mylist::list<int> lt;
 
@@ -77,11 +77,31 @@ void list_test04()
 	print(lt);
 }
 
+void test04()
+{
+    mylist::list<int> lt;
+    lt.push_back(1);
+    lt.push_back(2);
+    lt.push_back(3);
+    lt.push_back(4);
+    lt.push_back(5);
+
+  	mylist::list<int>::const_reverse_iterator it = lt.rbegin();
+	while (it != lt.rend())
+	{
+		//*it = 10;
+		std::cout << *it << " ";
+		++it;
+	}
+	std::cout << std::endl;
+}
+
 int main()
 {
     // test01();
     // test02();
-    list_test04();
+    // test03();
+    test04();
 
     return 0;
 }
