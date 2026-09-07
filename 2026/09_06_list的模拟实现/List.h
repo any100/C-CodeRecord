@@ -6,6 +6,7 @@
 // 四、完善链表功能，实现insert等
 // 五、拷贝构造，赋值
 // 六、const迭代器。方法一：拷贝一份迭代器修改为const。方法二：加一个模版参数。
+// 七、实现反向迭代器。方式一独立类。方式二适配器
 
 #include <iostream>
 #include <cassert>
@@ -55,12 +56,13 @@ namespace mylist
         {
         }
 
-		// 添加的模板构造函数，允许从其他Ref和Ptr的迭代器构造
-		// 可以不加，但是只能在传参数时使用const_iterator，加上可以直接使用 
-		template<class RefOther, class PtrOther>
-		list_iterator(const list_iterator<T, RefOther, PtrOther>& other)
-			: _node(other._node)
-		{}
+        // 添加的模板构造函数，允许从其他Ref和Ptr的迭代器构造
+        // 可以不加，但是只能在传参数时使用const_iterator，加上可以直接使用
+        template <class RefOther, class PtrOther>
+        list_iterator(const list_iterator<T, RefOther, PtrOther> &other)
+            : _node(other._node)
+        {
+        }
 
         // 重载 *
         // 为什么？？
@@ -191,6 +193,131 @@ namespace mylist
     //     }
     // };
 
+    // 七、实现反向迭代器
+    // 方式一：直接复制正向迭代器代码，将 ++ 改为 -- 实现反向迭代器
+    // template <class T, class Ref, class Ptr>
+    // struct list_reverse_iterator
+    // {
+    //     typedef list_node<T> Node;
+    //     typedef list_reverse_iterator<T, Ref, Ptr> Self;
+
+    //     Node *_node; // 当前节点
+
+    //     list_reverse_iterator(Node *node = nullptr)
+    //         : _node(node)
+    //     {
+    //     }
+
+    // 	template<class RefOther, class PtrOther>
+    // 	list_reverse_iterator(const list_reverse_iterator<T, RefOther, PtrOther>& other)
+    // 		: _node(other._node)
+    // 	{}
+
+    //     Ref operator*()
+    //     {
+    //         return _node->_data;
+    //     }
+    //     Ptr operator->()
+    //     {
+    //         return &_node->_data;
+    //     }
+
+    //     Self &operator++()
+    //     {
+    //         _node = _node->_prev;
+    //         return *this;
+    //     }
+    //     Self operator++(int)
+    //     {
+    //         Self tmp = *this;
+    //         _node = _node->_prev;
+    //         return tmp;
+    //     }
+    //     Self &operator--()
+    //     {
+    //         _node = _node->_next;
+    //         return *this;
+    //     }
+    //     Self operator--(int)
+    //     {
+    //         Self tmp = *this;
+    //         _node = _node->_next;
+    //         return tmp;
+    //     }
+    //     bool operator!=(const Self &it) const
+    //     {
+    //         return _node != it._node;
+    //     }
+
+    //     bool operator==(const Self &it) const
+    //     {
+    //         return _node == it._node;
+    //     }
+    // };
+
+    // 方式二：使用模板参数，实现反向迭代器 --适配器
+    template <class Iter, class Ref, class Ptr>
+    struct list_reverse_iterator
+    {
+        Iter _iterator;
+        typedef list_reverse_iterator<Iter, Ref, Ptr> Self;
+
+        list_reverse_iterator(Iter it = Iter())
+            : _iterator(it)
+        {
+        }
+
+        // 转换构造：普通反向适配器 → const 反向适配器
+        template <class IterOther, class RefOther, class PtrOther>
+        list_reverse_iterator(const list_reverse_iterator<IterOther, RefOther, PtrOther> &other)
+            : _iterator(other._iterator)
+        {
+        }
+
+        Ref operator*()
+        {
+            Iter tmp = _iterator;     // 错位核心：先拷贝
+            --tmp;                    // 后退一步
+            return *tmp;              // 再解引用 → 前一个元素
+        }
+        Ptr operator->()
+        {
+            return &(operator*()); // 复用 *
+        }
+        // 方向全部反转转发
+        Self &operator++()
+        {
+            --_iterator; // ++ → base 的 --
+            return *this;
+        }
+        Self operator++(int)
+        {
+            Self tmp = *this;
+            --_iterator; // ++ → base 的 --
+            return tmp;
+        }
+        Self &operator--()
+        {
+            ++_iterator;     // -- → base 的 ++
+            return *this;
+        }
+        Self operator--(int)
+        {
+            Self tmp = *this;
+            ++_iterator;     // -- → base 的 ++ 
+            return tmp;
+        }
+        bool operator!=(const Self &it) const
+        {
+            return _iterator != it._iterator;
+        }
+
+        bool operator==(const Self &it) const
+        {
+            return _iterator == it._iterator;
+        }
+    };
+
     // 二、构造链表，实现尾插
     template <class T>
     class list
@@ -203,8 +330,8 @@ namespace mylist
         size_t _size;    // list 长度
     public:
         // 迭代器
-        typedef list_iterator<T, T&,  T*> iterator;
-        typedef list_iterator<T, const T&, const T*> const_iterator;
+        typedef list_iterator<T, T &, T *> iterator;
+        typedef list_iterator<T, const T &, const T *> const_iterator;
         // typedef list_iterator<T> iterator;
         // typedef list_const_iterator<T> const_iterator;
 
@@ -213,20 +340,60 @@ namespace mylist
             // _head->_next 是第一个节点，_head 是哨兵位
             return iterator(_head->_next);
         }
-
         iterator end()
         {
             return iterator(_head);
         }
-
         const_iterator begin() const
         {
             return const_iterator(_head->_next);
         }
-
         const_iterator end() const
         {
             return const_iterator(_head);
+        }
+
+        // 反向迭代器
+        // 方式一：独立类，实现反向迭代器
+        // typedef list_reverse_iterator<T, T &, T *> reverse_iterator;
+        // typedef list_reverse_iterator<T, const T &, const T *> const_reverse_iterator;
+
+        // reverse_iterator rbegin()
+        // {
+        //     return reverse_iterator(_head->_prev);
+        // }
+        // reverse_iterator rend()
+        // {
+        //     return reverse_iterator(_head);
+        // }
+        // const_reverse_iterator rbegin() const
+        // {
+        //     return const_reverse_iterator(_head->_prev);
+        // }
+        // const_reverse_iterator rend() const
+        // {
+        //     return const_reverse_iterator(_head);
+        // }
+
+        // 方式二：使用模板参数，实现反向迭代器 --适配器
+        typedef list_reverse_iterator<iterator, T &, T *> reverse_iterator;
+        typedef list_reverse_iterator<const_iterator, const T &, const T *> const_reverse_iterator;
+
+        reverse_iterator rbegin()
+        {
+            return reverse_iterator(end());
+        }
+        reverse_iterator rend()
+        {
+            return reverse_iterator(begin());
+        }
+        const_reverse_iterator rbegin() const
+        {
+            return const_reverse_iterator(end());
+        }
+        const_reverse_iterator rend() const
+        {
+            return const_reverse_iterator(begin());
         }
 
     public:
@@ -378,6 +545,11 @@ namespace mylist
         }
 
         size_t size()
+        {
+            return _size;
+        }
+
+        size_t size() const
         {
             return _size;
         }
